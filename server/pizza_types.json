@@ -1,0 +1,32 @@
+[
+    {
+        "id": "margherita",
+        "name": "Margherita",
+        "cost_pp": 3,
+        "stuffed_pp": 1
+    },
+    {
+        "id": "pepperoni",
+        "name": "Pepperoni",
+        "cost_pp": 3,
+        "stuffed_pp": 1
+    },
+    {
+        "id": "hawaiian",
+        "name": "Hawaiian",
+        "cost_pp": 4,
+        "stuffed_pp": 1
+    },
+    {
+        "id": "buffalo_chicken",
+        "name": "Buffalo Chicken",
+        "cost_pp": 5,
+        "stuffed_pp": 1
+    },
+    {
+        "id": "veg_feast",
+        "name": "Vegetable Feast",
+        "cost_pp": 4,
+        "stuffed_pp": 1
+    }
+]

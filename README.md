@@ -1,11 +1,12 @@
 # PizzaPalace
 GCSE Computer Science Challenge
 
-## Installation
+## Running the Server
 ```
 git clone https://github.com/TheJoeCoder/PizzaPalace
 cd PizzaPalace
 pip install -r requirements.txt
-echo "SECRET_KEY = 'SOME_KEY'" > app/config.py
-python -m flask --app=pizza run
+cd server
+cp config.py.example config.py
+python app.py
 ```
