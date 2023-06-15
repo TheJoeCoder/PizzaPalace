@@ -12,14 +12,24 @@ with open("pizza_types.json","r") as f:
 
 open_carts = {}
 
+open_carts["test"] = {
+    "key": "test",
+    "items": []
+}
+
 def get_cart(uid, key):
-    if uid == None or key == None:
-        return None
-    if uid not in open_carts:
-        return None
-    if open_carts[uid]["key"] != key:
+    if (uid == None or key == None or uid not in open_carts or open_carts[uid]["key"] != key):
         return None
     return open_carts[uid]
+
+def gen_invalid_creds_msg():
+    return "{\"status\":403, \"message\": \"invalid cart credentials\"}", 403
+
+def gen_invalid_message(noun: str):
+    return "{\"status\":400, \"message\": \"invalid " + noun + "\"}", 400
+
+def gen_missing_message(noun: str):
+    return "{\"status\":400, \"message\": \"missing " + noun + "\"}", 400
 
 @app.route("/")
 def hello_world():
@@ -37,7 +47,7 @@ def open_cart():
     foundunique = False
     while not foundunique:
         cart_id = str(uuid.uuid4())
-        if cart_id in open_carts:
+        if (cart_id in open_carts):
             logger.warn("Regenerating UUID for new cart - prev " + cart_id)
         else:
             foundunique = True
@@ -57,7 +67,7 @@ def get_cart_items():
     cart_key = request.args.get("key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
-    if cart == None:
+    if (cart == None):
         return "{\"status\":403, \"message\": \"invalid cart credentials\"}", 403
     return "{\"status\":200, \"items\": " + json.dumps(cart["items"]) + "}", 200
 
@@ -68,45 +78,105 @@ def add_cart_item():
     cart_key = request.args.get("key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
-    if cart == None:
-        return "{\"status\":403, \"message\": \"invalid cart credentials\"}", 403
+    if (cart == None):
+        return gen_invalid_creds_msg()
     # Get pizza type from request
     pizza_type = request.args.get("type")
-    if pizza_type == None:
-        return "{\"status\":400, \"message\": \"missing pizza type\"}", 400
+    if (pizza_type == None):
+        return gen_missing_message("pizza type")
     # Get pizza type from pizza types
     pizza_type_obj = None
     for type in pizza_types:
-        if type["id"] == pizza_type:
+        if (type["id"] == pizza_type):
             pizza_type_obj = type
             break
-    if pizza_type_obj == None:
-        return "{\"status\":400, \"message\": \"invalid pizza type\"}", 400
+    if (pizza_type_obj == None):
+        return gen_invalid_message("pizza type")
     # Get number of people from request
     num_people = request.args.get("num_people")
-    if num_people == None:
-        return "{\"status\":400, \"message\": \"missing number of people\"}", 400
+    if (num_people == None):
+        return gen_missing_message("number of people")
     # Test for invalid number of people and convert to integer
     try:
         num_people = int(num_people)
     except:
-        return "{\"status\":400, \"message\": \"invalid number of people\"}", 400
+        return gen_invalid_message("number of people")
     # Get stuffed crust from request
     stuffed_crust = request.args.get("stuffed_crust")
-    if stuffed_crust == None:
-        return "{\"status\":400, \"message\": \"missing stuffed crust\"}", 400
+    if (stuffed_crust == None):
+        return gen_missing_message("stuffed crust")
     # Test for invalid stuffed crust and convert to boolean
-    if stuffed_crust == "true":
+    if (stuffed_crust.lower() == "true"):
         stuffed_crust = True
-    elif stuffed_crust == "false":
+    elif (stuffed_crust.lower() == "false"):
         stuffed_crust = False
     else:
-        return "{\"status\":400, \"message\": \"invalid stuffed crust\"}", 400
+        return gen_invalid_message("stuffed crust")
     cart["items"].append({
         "type": pizza_type,
         "num_people": num_people,
         "stuffed": stuffed_crust
     })
-    return "{\"status\":200, \"message\": \"ok\", \"items\": " + cart["items"] + "}", 200
-if __name__ == "__main__":
-    app.run()
+    return "{\"status\":200, \"message\": \"ok\", \"items\": " + json.dumps(cart["items"]) + "}", 200
+
+@app.route("/cart/total")
+def get_cart_total():
+    # Get cart id and key from request
+    cart_id = request.args.get("id")
+    cart_key = request.args.get("key")
+    # Get cart and verify not none
+    cart = get_cart(cart_id, cart_key)
+    if (cart == None):
+        return gen_invalid_creds_msg()
+    subtotal = 0.0
+    breakdown = []
+    for item in cart["items"]:
+        for pizza in pizza_types: # TODO optimise; REALLY inefficient
+            if (pizza["id"] == item["type"]):
+                # Found correct pizza
+                i_main_subtotal = item["num_people"] * pizza["cost_pp"]
+                i_breakdown = {
+                    "item": pizza["id"],
+                    "cost_per": pizza["cost_pp"],
+                    "num_people": item["num_people"],
+                    "base_total": i_main_subtotal,
+                    "addons": []
+                }
+                i_breakdown["total"] = i_main_subtotal
+                subtotal += i_main_subtotal
+                if (item["stuffed"]):
+                    i_stuffed_total = item["num_people"] * pizza["stuffed_pp"]
+                    i_breakdown["addons"].append({
+                        "name": "stuffed",
+                        "cost_per": pizza["stuffed_pp"],
+                        "addon_total": i_stuffed_total
+                    })
+                    i_breakdown["total"] = i_main_subtotal + i_stuffed_total
+                    subtotal += i_stuffed_total
+                breakdown.append(i_breakdown)
+                break
+    grand_total = subtotal + config.delivery_flatrate
+    return "{\"status\":200,\"message\":\"ok\",\"subtotal\":" + str(subtotal) + ",\"delivery_rate\":" + str(config.delivery_flatrate) + ",\"total\":" + str(grand_total) + ",\"breakdown\":" + json.dumps(breakdown) + "}", 200
+
+@app.route("/cart/confirmorder")
+def confirm_order_cart():
+    # Get cart id and key from request
+    cart_id = request.args.get("id")
+    cart_key = request.args.get("key")
+    # Get cart and verify not none
+    cart = get_cart(cart_id, cart_key)
+    if (cart == None):
+        return gen_invalid_creds_msg()
+    address = request.args.get("address")
+    if (address == None):
+        return gen_missing_message("address")
+    # Test for invalid address and convert to dict
+    try:
+        address = json.loads(address)
+    except:
+        return gen_invalid_message("address")
+    # TODO place order and clear cart
+    return "{\"status\":500,\"message\":\"not implemented\"}"
+
+if (__name__ == "__main__"):
+    app.run(debug=True, host="0.0.0.0")

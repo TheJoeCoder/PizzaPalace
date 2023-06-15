@@ -1,1 +1,2 @@
 webhook = "https://example.com/webhook"
+delivery_flatrate = 0
