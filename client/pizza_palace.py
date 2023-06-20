@@ -1,5 +1,6 @@
 import json
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
+from tkinter import *
 
 ## Init
 root = Tk()
@@ -26,7 +27,7 @@ submit_button.grid(column=2, row=3, sticky=(W, E))
 for child in mainframe.winfo_children():
     child.grid_configure(padx=5, pady=5)
 
-name_entry.focus()
+submit_button.focus()
 root.bind("<Return>", submit)
 
 root.mainloop()
