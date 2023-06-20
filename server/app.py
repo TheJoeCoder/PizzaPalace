@@ -1,11 +1,17 @@
-import json, uuid, logging
+import json, uuid, logging, requests
 from flask import Flask, request, jsonify, Response
+from pymongo import MongoClient
 
 logger = logging.Logger(__name__)
 
 app = Flask(__name__)
 
 import config
+
+# Connect to MongoDB
+client = MongoClient(config.mongo_uri)
+
+db = client[config.mongo_db]
 
 with open("pizza_types.json","r") as f:
     pizza_types = json.loads(f.read())
@@ -158,7 +164,7 @@ def get_cart_total():
     grand_total = subtotal + config.delivery_flatrate
     return "{\"status\":200,\"message\":\"ok\",\"subtotal\":" + str(subtotal) + ",\"delivery_rate\":" + str(config.delivery_flatrate) + ",\"total\":" + str(grand_total) + ",\"breakdown\":" + json.dumps(breakdown) + "}", 200
 
-@app.route("/cart/confirmorder")
+@app.route("/cart/confirmorder", methods=["POST"])
 def confirm_order_cart():
     # Get cart id and key from request
     cart_id = request.args.get("id")
@@ -175,8 +181,25 @@ def confirm_order_cart():
         address = json.loads(address)
     except:
         return gen_invalid_message("address")
-    # TODO place order and clear cart
-    return "{\"status\":500,\"message\":\"not implemented\"}"
+    # Build order
+    order = {
+        "address": address,
+        "items": cart["items"]
+    }
+    # Add order to database
+    order_id = db.orders.insert_one(order).inserted_id
+    # Post webhook
+    webhook_data = {
+        "username": "PizzaBot",
+        "content": config.webhook_content_prepend + str(order_id)
+    }
+    webhook_response = requests.post(config.webhook_url, json=webhook_data)
+    if (webhook_response.status_code != 200):
+        logger.error("Webhook failed with status code " + str(webhook_response.status_code))
+    # Remove cart from existing carts
+    del open_carts[cart_id]
+    # Return order ID
+    return "{\"status\":200,\"message\":\"OK\", \"code\":\"" + str(order_id) + "\"}", 200
 
 if (__name__ == "__main__"):
     app.run(debug=True, host="0.0.0.0")
