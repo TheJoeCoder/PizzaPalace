@@ -1,4 +1,4 @@
-import json, uuid, logging, requests
+import json, uuid, logging, requests, time
 from flask import Flask, request, jsonify, Response
 from pymongo import MongoClient
 
@@ -12,6 +12,8 @@ import config
 client = MongoClient(config.mongo_uri)
 
 db = client[config.mongo_db]
+
+start_time = time.time()
 
 with open("pizza_types.json","r") as f:
     pizza_types = json.loads(f.read())
@@ -41,6 +43,11 @@ def gen_missing_message(noun: str):
 def hello_world():
     # Return OK message
     return "{\"status\":200, \"message\": \"ok\"}", 200
+
+@app.route("/status", methods=["GET"])
+def get_status():
+    # Return status
+    return "{\"status\":200, \"message\": \"ok\", \"uptime\": " + str(time.time() - start_time) + "}", 200
 
 @app.route("/pizzas", methods=["GET"])
 def get_pizzas():
@@ -125,7 +132,7 @@ def add_cart_item():
     })
     return "{\"status\":200, \"message\": \"ok\", \"items\": " + json.dumps(cart["items"]) + "}", 200
 
-@app.route("/cart/total")
+@app.route("/cart/total", methods=["GET"])
 def get_cart_total():
     # Get cart id and key from request
     cart_id = request.args.get("id")
@@ -201,5 +208,6 @@ def confirm_order_cart():
     # Return order ID
     return "{\"status\":200,\"message\":\"OK\", \"code\":\"" + str(order_id) + "\"}", 200
 
+# Main program code
 if (__name__ == "__main__"):
     app.run(debug=True, host="0.0.0.0")
