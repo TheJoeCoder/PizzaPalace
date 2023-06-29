@@ -84,8 +84,12 @@ def connect(*args):
 
 # Create new session
 def new_session(*arg):
-    
-    pass
+    res = requests.post(get_endpoint("/cart/new"))
+    if (res.status_code == 200):
+        # TODO parse response
+        pass
+    else:
+        connect_fail()
 
 # Refresh order screen items
 def refresh_items(*args):
