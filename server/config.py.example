@@ -1,5 +1,5 @@
 webhook = "https://example.com/webhook"
 webhook_content_prepend = "New order received! Order ID: "
-delivery_flatrate = 0
+delivery_flatrate = 0.0
 mongo_uri = "mongodb://localhost:27017/"
 mongo_db = "pizza_palace"
