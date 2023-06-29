@@ -25,6 +25,21 @@ open_carts["test"] = {
     "items": []
 }
 
+# Full stack trace function
+#  from https://stackoverflow.com/questions/6086976/how-to-get-a-complete-exception-stack-trace-in-python/16589622#16589622 
+def full_stack():
+    import traceback, sys
+    exc = sys.exc_info()[0]
+    stack = traceback.extract_stack()[:-1]  # last one would be full_stack()
+    if exc is not None:  # i.e. an exception is present
+        del stack[-1]       # remove call of full_stack, the printed exception
+                            # will contain the caught exception caller instead
+    trc = 'Traceback (most recent call last):\n'
+    stackstr = trc + ''.join(traceback.format_list(stack))
+    if exc is not None:
+         stackstr += '  ' + traceback.format_exc().lstrip(trc)
+    return stackstr
+
 def get_cart(uid, key):
     if (uid == None or key == None or uid not in open_carts or open_carts[uid]["key"] != key):
         return None
@@ -200,9 +215,14 @@ def confirm_order_cart():
         "username": "PizzaBot",
         "content": config.webhook_content_prepend + str(order_id)
     }
-    webhook_response = requests.post(config.webhook_url, json=webhook_data)
-    if (webhook_response.status_code != 200):
-        logger.error("Webhook failed with status code " + str(webhook_response.status_code))
+    try:
+        webhook_response = requests.post(config.webhook_url, json=webhook_data)
+        if (webhook_response.status_code != 200):
+            logger.error("Webhook failed with status code " + str(webhook_response.status_code))
+    except:
+        except_text = full_stack()
+        logger.error("Webhook failed with exception")
+        logger.debug(except_text)
     # Remove cart from existing carts
     del open_carts[cart_id]
     # Return order ID
