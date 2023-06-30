@@ -12,6 +12,8 @@ logger.setLevel(logging.DEBUG)
 ## Global Variables
 connect_url = StringVar()
 
+pizzas = []
+
 cart_id = ""
 cart_key = ""
 
@@ -84,17 +86,28 @@ def connect(*args):
 
 # Create new session
 def new_session(*arg):
+    global cart_id, cart_key
     res = requests.post(get_endpoint("/cart/new"))
     if (res.status_code == 200):
-        # TODO parse response
-        pass
+        res_json = res.json()
+        if (res_json != None and res_json["status"] == 200):
+            cart_id, cart_key = res_json["id"], res_json["key"]
+            return True
+        else:
+            connect_fail()
+            return False
     else:
         connect_fail()
+        return False
 
 # Refresh order screen items
 def refresh_items(*args):
-    # TODO get /pizzas from server
-    pass
+    global pizzas
+    res = requests.get(get_endpoint("/pizzas"))
+    if (res.status_code == 200 and res.json() != None):
+        pizzas = res.json()
+    else:
+        connect_fail()
 
 ## Main program code
 # Window setup
