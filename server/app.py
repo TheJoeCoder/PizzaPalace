@@ -91,8 +91,8 @@ def open_cart():
 @app.route("/cart/items", methods=["GET"])
 def get_cart_items():
     # Get cart id and key from request
-    cart_id = request.args.get("id")
-    cart_key = request.args.get("key")
+    cart_id = get_property(request, "id")
+    cart_key = get_property(request, "key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
     if (cart == None):
@@ -102,14 +102,14 @@ def get_cart_items():
 @app.route("/cart/add", methods=["POST"])
 def add_cart_item():
     # Get cart id and key from request
-    cart_id = request.args.get("id")
-    cart_key = request.args.get("key")
+    cart_id = get_property(request, "id")
+    cart_key = get_property(request, "key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
     if (cart == None):
         return gen_invalid_creds_msg()
     # Get pizza type from request
-    pizza_type = request.args.get("type")
+    pizza_type = get_property(request, "type")
     if (pizza_type == None):
         return gen_missing_message("pizza type")
     # Get pizza type (ID) from pizza types
@@ -121,7 +121,7 @@ def add_cart_item():
     if (pizza_type_obj == None):
         return gen_invalid_message("pizza type")
     # Get number of people from request
-    num_people = request.args.get("num_people")
+    num_people = get_property(request, "num_people")
     if (num_people == None):
         return gen_missing_message("number of people")
     # Test for invalid number of people and convert to integer
@@ -130,7 +130,7 @@ def add_cart_item():
     except:
         return gen_invalid_message("number of people")
     # Get stuffed crust from request
-    stuffed_crust = request.args.get("stuffed_crust")
+    stuffed_crust = get_property(request, "stuffed_crust")
     if (stuffed_crust == None):
         return gen_missing_message("stuffed crust")
     # Test for invalid stuffed crust and convert to boolean
@@ -150,8 +150,8 @@ def add_cart_item():
 @app.route("/cart/total", methods=["GET"])
 def get_cart_total():
     # Get cart id and key from request
-    cart_id = request.args.get("id")
-    cart_key = request.args.get("key")
+    cart_id = get_property(request, "id")
+    cart_key = get_property(request, "key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
     if (cart == None):
@@ -186,16 +186,24 @@ def get_cart_total():
     grand_total = subtotal + config.delivery_flatrate
     return "{\"status\":200,\"message\":\"ok\",\"subtotal\":" + str(subtotal) + ",\"delivery_rate\":" + str(config.delivery_flatrate) + ",\"total\":" + str(grand_total) + ",\"breakdown\":" + json.dumps(breakdown) + "}", 200
 
+def get_property(request, param):
+    if (request.headers.get("Content-Type") == "application/json" and request.json[param]):
+        return request.json[param]
+    elif (request.args.get(param)):
+        return request.args.get(param)
+    else:
+        return None
+
 @app.route("/cart/confirmorder", methods=["POST"])
 def confirm_order_cart():
     # Get cart id and key from request
-    cart_id = request.args.get("id")
-    cart_key = request.args.get("key")
+    cart_id = get_property(request, "id")
+    cart_key = get_property(request, "key")
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
     if (cart == None):
         return gen_invalid_creds_msg()
-    address = request.args.get("address")
+    address = get_property(request, "address")
     if (address == None):
         return gen_missing_message("address")
     # Test for invalid address and convert to dict
