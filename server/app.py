@@ -96,7 +96,7 @@ def get_cart_items():
     # Get cart and verify not none
     cart = get_cart(cart_id, cart_key)
     if (cart == None):
-        return "{\"status\":403, \"message\": \"invalid cart credentials\"}", 403
+        return gen_invalid_creds_msg()
     return "{\"status\":200, \"items\": " + json.dumps(cart["items"]) + "}", 200
 
 @app.route("/cart/add", methods=["POST"])
@@ -226,7 +226,7 @@ def confirm_order_cart():
     # Remove cart from existing carts
     del open_carts[cart_id]
     # Return order ID
-    return "{\"status\":200,\"message\":\"OK\", \"code\":\"" + str(order_id) + "\"}", 200
+    return "{\"status\":200,\"message\":\"ok\", \"code\":\"" + str(order_id) + "\"}", 200
 
 # Main program code
 if (__name__ == "__main__"):
