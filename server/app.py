@@ -112,7 +112,7 @@ def add_cart_item():
     pizza_type = request.args.get("type")
     if (pizza_type == None):
         return gen_missing_message("pizza type")
-    # Get pizza type from pizza types
+    # Get pizza type (ID) from pizza types
     pizza_type_obj = None
     for type in pizza_types:
         if (type["id"] == pizza_type):
