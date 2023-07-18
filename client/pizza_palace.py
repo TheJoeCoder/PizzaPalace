@@ -144,7 +144,8 @@ def order_item(item, people, stuffed_crust):
     if item_dict == {}:
         messagebox.showerror("Error", "Could not find pizza")
         return
-    res = requests.post(get_endpoint("/cart/add"), json={"cart_id": cart_id, "cart_key": cart_key, "pizza_id": item, "people": people, "stuffed_crust": stuffed_crust})
+    res = requests.post(get_endpoint("/cart/add"), json={"id": cart_id, "key": cart_key, "type": item, "num_people": people, "stuffed_crust": stuffed_crust})
+    print(res.text)
     if (res.status_code == 200):
         res_json = res.json()
         if (res_json != None and res_json["status"] == 200):
