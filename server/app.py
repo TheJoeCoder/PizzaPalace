@@ -2,7 +2,10 @@ import json, uuid, logging, requests, time
 from flask import Flask, request, jsonify, Response
 from pymongo import MongoClient
 
+logging.basicConfig(level=logging.INFO)
+
 logger = logging.Logger(__name__)
+logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 
@@ -53,6 +56,14 @@ def gen_invalid_message(noun: str):
 
 def gen_missing_message(noun: str):
     return "{\"status\":400, \"message\": \"missing " + noun + "\"}", 400
+
+def get_property(request, param):
+    if (request.headers.get("Content-Type") == "application/json" and request.json.get(param) != None):
+        return request.json.get(param)
+    elif (request.args.get(param) != None):
+        return request.args.get(param)
+    else:
+        return None
 
 @app.route("/")
 def hello_world():
@@ -134,6 +145,7 @@ def add_cart_item():
     if (stuffed_crust == None):
         return gen_missing_message("stuffed crust")
     # Test for invalid stuffed crust and convert to boolean
+    stuffed_crust = str(stuffed_crust) # Convert to string to avoid errors
     if (stuffed_crust.lower() == "true"):
         stuffed_crust = True
     elif (stuffed_crust.lower() == "false"):
@@ -185,14 +197,6 @@ def get_cart_total():
                 break
     grand_total = subtotal + config.delivery_flatrate
     return "{\"status\":200,\"message\":\"ok\",\"subtotal\":" + str(subtotal) + ",\"delivery_rate\":" + str(config.delivery_flatrate) + ",\"total\":" + str(grand_total) + ",\"breakdown\":" + json.dumps(breakdown) + "}", 200
-
-def get_property(request, param):
-    if (request.headers.get("Content-Type") == "application/json" and request.json[param]):
-        return request.json[param]
-    elif (request.args.get(param)):
-        return request.args.get(param)
-    else:
-        return None
 
 @app.route("/cart/confirmorder", methods=["POST"])
 def confirm_order_cart():
