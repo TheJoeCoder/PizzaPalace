@@ -118,6 +118,8 @@ def new_session(*arg):
         res_json = res.json()
         if (res_json != None and res_json["status"] == 200):
             cart_id, cart_key = res_json["id"], res_json["key"]
+            logger.debug("Cart ID: " + cart_id)
+            logger.debug("Cart Key: " + cart_key)
             return True
         else:
             return False
@@ -136,6 +138,7 @@ def refresh_items():
         return False
 
 def order_item(item, people, stuffed_crust):
+    global pizzas, cart_id, cart_key
     item_dict = {}
     for pizza in pizzas:
         if pizza["id"] == item:
@@ -144,8 +147,9 @@ def order_item(item, people, stuffed_crust):
     if item_dict == {}:
         messagebox.showerror("Error", "Could not find pizza")
         return
-    res = requests.post(get_endpoint("/cart/add"), json={"id": cart_id, "key": cart_key, "type": item, "num_people": people, "stuffed_crust": stuffed_crust})
-    print(res.text)
+    reqjson = {"id": cart_id, "key": cart_key, "type": item, "num_people": people, "stuffed_crust": stuffed_crust}
+    res = requests.post(get_endpoint("/cart/add"), json=reqjson)
+    logger.debug(res.text)
     if (res.status_code == 200):
         res_json = res.json()
         if (res_json != None and res_json["status"] == 200):
@@ -158,7 +162,6 @@ def order_item(item, people, stuffed_crust):
 class OrderItem():
     def __init__(self, pizza_dict, row):
         global order_frame
-        print(pizza_dict)
         self.id = pizza_dict["id"]
         self.row = row
         self.label1 = ttk.Label(order_frame, text=pizza_dict["name"])
@@ -183,7 +186,7 @@ class OrderItem():
         if (validate_int(self.quantity.get())):
             order_item(self.id, int(self.quantity.get()), self.stuffed_crust.get())
 
-def refresh_order_items(*args):
+def refresh_order_items():
     global order_frame
     if(refresh_items()):
         # Remove all items
@@ -195,6 +198,45 @@ def refresh_order_items(*args):
             orderpage_items.append(OrderItem(pizza, row))
             row += 1
     configure_grid(order_frame)
+
+# Refresh cart screen items
+class CartItem():
+    def __init__(self, item_dict, row):
+        global cart_frame, pizzas
+        self.id = item_dict["id"]
+        self.pizza = None
+        for p in pizzas:
+            if p["id"] == self.id:
+                self.pizza = p
+                break
+        if self.pizza == None:
+            logger.error("Could not find pizza with ID " + self.id)
+            return
+        self.row = row
+        self.label1 = ttk.Label(cart_frame, text=self.pizza["name"])
+        self.label1.grid(column=1, row=row, sticky=(W, E))
+        self.label2 = ttk.Label(cart_frame, text=str(item_dict["num_people"]))
+        self.label2.grid(column=2, row=row, sticky=(W, E))
+        self.stuffed_crust = BooleanVar(value=item_dict["stuffed_crust"])
+        self.stuffed_display = ttk.Checkbutton(cart_frame, variable=self.stuffed_crust, state="disabled")
+        self.label3 = ttk.Label(cart_frame, text="£%.2f" % self.pizza["cost_pp"] * item_dict["num_people"])
+        self.label3.grid(column=2, row=row, sticky=(W, E))
+    def destroy(self):
+        self.label1.destroy()
+        self.label2.destroy()
+        self.stuffed_display.destroy()
+
+def refresh_citems():
+    res = requests.get(get_endpoint("/cart/items"))
+    if (res.status_code == 200 and res.json() != None):
+        unused_todo = res.json()
+        return True
+    else:
+        connect_fail()
+        return False
+
+def refresh_cart_items():
+    global cart_frame
 
 ## Main program code
 # Window setup
@@ -239,7 +281,21 @@ order_label_5.grid(column=5, row=1, sticky=(W, E))
 configure_grid(order_frame)
 
 # Cart tab
+
 cart_frame = create_tab("Cart")
+cart_label_1 = ttk.Label(cart_frame, text="Name")
+cart_label_1.grid(column=1, row=1, sticky=(W, E))
+cart_label_2 = ttk.Label(cart_frame, text="Number of People")
+cart_label_2.grid(column=2, row=1, sticky=(W, E))
+cart_label_3 = ttk.Label(cart_frame, text="Stuffed Crust?")
+cart_label_3.grid(column=3, row=1, sticky=(W, E))
+cart_label_4 = ttk.Label(cart_frame, text="Total Cost")
+cart_label_4.grid(column=4, row=1, sticky=(W, E))
+
+cart_order_button = ttk.Button(cart_frame, text="Order", command=lambda: tab_control.select(confirm_frame))
+cart_order_button.grid(column=1, row=2, sticky=(W, E)) # TODO edit this in when items are added
+
+configure_grid(cart_frame)
 
 # Confirm tab
 confirm_frame = create_tab("Confirm")
