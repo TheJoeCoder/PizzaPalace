@@ -20,7 +20,10 @@ pizzas = []
 cart_id = ""
 cart_key = ""
 
+req_cart_items = []
+
 orderpage_items = []
+cartpage_items = []
 
 ## Subroutines
 def get_endpoint(endpoint):
@@ -47,6 +50,7 @@ def create_tab(title, padding="3 3 12 12", sticky=(N, W, E, S)):
 def configure_grid(frame):
     for child in frame.winfo_children():
         child.grid_configure(padx=5, pady=5)
+    frame.pack(expand=1, fill="both") ## TEST
 
 # General connect fail function
 # Used when the server is unreachable or returns a non-200 response
@@ -153,6 +157,10 @@ def order_item(item, people, stuffed_crust):
     if (res.status_code == 200):
         res_json = res.json()
         if (res_json != None and res_json["status"] == 200):
+            # Success
+            # Refresh items
+            refresh_order_items()
+            # Message box
             messagebox.showinfo("OK!", "Successfully added to cart")
         else:
             connect_fail()
@@ -187,7 +195,7 @@ class OrderItem():
             order_item(self.id, int(self.quantity.get()), self.stuffed_crust.get())
 
 def refresh_order_items():
-    global order_frame
+    global order_frame, pizzas, orderpage_items
     if(refresh_items()):
         # Remove all items
         for op_item in orderpage_items:
@@ -203,7 +211,7 @@ def refresh_order_items():
 class CartItem():
     def __init__(self, item_dict, row):
         global cart_frame, pizzas
-        self.id = item_dict["id"]
+        self.id = item_dict["type"]
         self.pizza = None
         for p in pizzas:
             if p["id"] == self.id:
@@ -217,31 +225,81 @@ class CartItem():
         self.label1.grid(column=1, row=row, sticky=(W, E))
         self.label2 = ttk.Label(cart_frame, text=str(item_dict["num_people"]))
         self.label2.grid(column=2, row=row, sticky=(W, E))
-        self.stuffed_crust = BooleanVar(value=item_dict["stuffed_crust"])
+        self.stuffed_crust = BooleanVar(value=item_dict["stuffed"])
         self.stuffed_display = ttk.Checkbutton(cart_frame, variable=self.stuffed_crust, state="disabled")
-        self.label3 = ttk.Label(cart_frame, text="£%.2f" % self.pizza["cost_pp"] * item_dict["num_people"])
-        self.label3.grid(column=2, row=row, sticky=(W, E))
+        self.stuffed_display.grid(column=3, row=row, sticky=(W, E))
+        self.label3 = ttk.Label(cart_frame, text="£%.2f" % (float(self.pizza["cost_pp"]) * int(item_dict["num_people"])))
+        self.label3.grid(column=4, row=row, sticky=(W, E))
     def destroy(self):
         self.label1.destroy()
         self.label2.destroy()
         self.stuffed_display.destroy()
 
 def refresh_citems():
-    res = requests.get(get_endpoint("/cart/items"))
+    global req_cart_items
+    reqjson = {"id": cart_id, "key": cart_key}
+    res = requests.get(get_endpoint("/cart/items"), params=reqjson)
     if (res.status_code == 200 and res.json() != None):
-        unused_todo = res.json()
+        items = res.json()["items"]
+        req_cart_items = items
         return True
     else:
         connect_fail()
         return False
 
 def refresh_cart_items():
-    global cart_frame
+    global cart_frame, cartpage_items
+    if(refresh_citems()):
+        # Remove all items
+        for c_item in cartpage_items:
+            c_item.destroy()
+            del c_item
+        # Add all items back
+        row = 2
+        for item in req_cart_items:
+            orderpage_items.append(CartItem(item, row))
+            row += 1
+        configure_grid(cart_frame)
+
+def confirm_order(address_vars: dict):
+    global cart_id, cart_key
+    # Check all address fields are filled
+    for var in address_vars:
+        if (var.get() == ""):
+            messagebox.showerror("Error", "Please fill in all address fields")
+            return
+    # Check cart is not empty
+    if (len(req_cart_items) == 0):
+        messagebox.showerror("Error", "Cart is empty")
+        return
+    # Join address fields
+    address = ""
+    for var in address_vars:
+        address += var.get() + ", "
+    address = address[:-2]
+    # Confirm order
+    reqjson = {"id": cart_id, "key": cart_key, "address": address}
+    res = requests.post(get_endpoint("/cart/confirmorder"), json=reqjson)
+    if (res.status_code == 200):
+        req_cart_items = []
+        refresh_cart_items()
+        new_session()
+        tab_control.select(order_frame)
+        messagebox.showinfo("OK!", "Order confirmed")
+
+def tab_changed_handler(event):
+    selected_tab = event.widget.select()
+    tab_text = event.widget.tab(selected_tab, "text")
+    if (tab_text == "Order"):
+        refresh_order_items()
+    elif (tab_text == "Cart"):
+        refresh_cart_items()
 
 ## Main program code
 # Window setup
 root.title("Pizza Palace")
 tab_control = ttk.Notebook(root)
+tab_control.bind("<<NotebookTabChanged>>", tab_changed_handler)
 
 # Connect tab
 #connect_frame = create_tab("Connect")
@@ -293,12 +351,39 @@ cart_label_4 = ttk.Label(cart_frame, text="Total Cost")
 cart_label_4.grid(column=4, row=1, sticky=(W, E))
 
 cart_order_button = ttk.Button(cart_frame, text="Order", command=lambda: tab_control.select(confirm_frame))
-cart_order_button.grid(column=1, row=2, sticky=(W, E)) # TODO edit this in when items are added
+cart_order_button.grid(column=1, row=2, sticky=(W, E))
 
 configure_grid(cart_frame)
 
 # Confirm tab
 confirm_frame = create_tab("Confirm")
+
+confirm_addressline1 = StringVar()
+confirm_addressline2 = StringVar()
+confirm_city = StringVar()
+confirm_postcode = StringVar()
+
+confirm_label_1 = ttk.Label(confirm_frame, text="Address Line 1")
+confirm_label_1.grid(column=1, row=1, sticky=(W, E))
+confirm_entry_1 = ttk.Entry(confirm_frame, width=20, textvariable=confirm_addressline1)
+confirm_entry_1.grid(column=2, row=1, sticky=(W, E))
+
+confirm_label_2 = ttk.Label(confirm_frame, text="Address Line 2")
+confirm_label_2.grid(column=1, row=2, sticky=(W, E))
+confirm_entry_2 = ttk.Entry(confirm_frame, width=20, textvariable=confirm_addressline2)
+confirm_entry_2.grid(column=2, row=2, sticky=(W, E))
+
+confirm_label_3 = ttk.Label(confirm_frame, text="City")
+confirm_label_3.grid(column=1, row=3, sticky=(W, E))
+confirm_entry_3 = ttk.Entry(confirm_frame, width=20, textvariable=confirm_city)
+confirm_entry_3.grid(column=2, row=3, sticky=(W, E))
+
+confirm_label_4 = ttk.Label(confirm_frame, text="Postcode")
+confirm_label_4.grid(column=1, row=4, sticky=(W, E))
+confirm_entry_4 = ttk.Entry(confirm_frame, width=20, textvariable=confirm_postcode)
+confirm_entry_4.grid(column=2, row=4, sticky=(W, E))
+
+confirm_button_1 = ttk.Button(confirm_frame, text="Confirm", command=lambda: confirm_order([confirm_addressline1, confirm_addressline2, confirm_city, confirm_postcode]))
 
 # Pack
 tab_control.pack(expand=1, fill="both")
