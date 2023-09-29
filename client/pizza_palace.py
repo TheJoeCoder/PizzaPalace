@@ -5,6 +5,13 @@ from tkinter import *
 ## Server URL
 server_url = "http://localhost:5000"
 
+## Additional Config file import
+try:
+    import config
+    server_url = config.server_url
+except:
+    pass
+
 ## Init
 root = Tk()
 
