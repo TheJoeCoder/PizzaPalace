@@ -1,5 +1,30 @@
 webhook = "https://example.com/webhook"
 webhook_content_prepend = "New order received! Order ID: "
+webhook_discord = True # If true, will use discord embeds below instead of prepend
+webhook_dc_embed_json = {
+  "author": {
+    "name": "PizzaPalace"
+  },
+  "title": "New Order!",
+  "fields": [
+    {
+      "name": "Order ID",
+      "value": "%ORDER_ID%"
+    },
+    {
+      "name": "Address",
+      "value": "%ADDRESS%"
+    },
+    {
+      "name": "Items",
+      "value": "%ITEMS%"
+    }
+  ],
+  "color": "#00b0f4",
+  "footer": {
+    "text": "PizzaPalace by TheJoeCoder"
+  }
+}
 delivery_flatrate = 0.0
 mongo_uri = "mongodb://localhost:27017/"
 mongo_db = "pizza_palace"

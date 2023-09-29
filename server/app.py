@@ -211,10 +211,11 @@ def confirm_order_cart():
     if (address == None):
         return gen_missing_message("address")
     # Test for invalid address and convert to dict
-    try:
-        address = json.loads(address)
-    except:
-        return gen_invalid_message("address")
+    #print(address)
+    #try:
+    #    address = json.loads(address)
+    #except:
+    #    return gen_invalid_message("address")
     # Build order
     order = {
         "address": address,
@@ -224,9 +225,19 @@ def confirm_order_cart():
     order_id = db.orders.insert_one(order).inserted_id
     # Post webhook
     webhook_data = {
-        "username": "PizzaBot",
-        "content": config.webhook_content_prepend + str(order_id)
+        "username": "PizzaBot"
     }
+    if config.webhook_discord:
+        # Post webhook
+        embed = config.webhook_dc_embed_json
+        for i in range(0, len(embed["fields"])):
+            for field_k, field_v in embed["fields"][i].items():
+                embed["fields"][i][field_k] = str(field_v).replace("%ORDER_ID%", str(order_id))
+                embed["fields"][i][field_k] = str(field_v).replace("%ADDRESS%", str(address))
+                embed["fields"][i][field_k] = str(field_v).replace("%ITEMS%", str(cart["items"]))
+        webhook_data["embeds"] = [embed]
+    else:
+        webhook_data["content"] = config.webhook_content_prepend + str(order_id)
     try:
         webhook_response = requests.post(config.webhook_url, json=webhook_data)
         if (webhook_response.status_code != 200):

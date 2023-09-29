@@ -267,10 +267,11 @@ def refresh_cart_items():
             row += 1
         configure_grid(cart_frame)
 
-def confirm_order(address_vars: dict):
-    global cart_id, cart_key
+def confirm_order(addressline1, addressline2, city, postcode):
+    global cart_id, cart_key, req_cart_items
+    required_vars = [addressline1, city, postcode]
     # Check all address fields are filled
-    for var in address_vars:
+    for var in required_vars:
         if (var.get() == ""):
             messagebox.showerror("Error", "Please fill in all address fields")
             return
@@ -280,11 +281,13 @@ def confirm_order(address_vars: dict):
         return
     # Join address fields
     address = ""
-    for var in address_vars:
-        address += var.get() + ", "
-    address = address[:-2]
+    address += addressline1.get() + ", "
+    address += addressline2.get() + ", "
+    address += city.get() + ", "
+    address += postcode.get()
     # Confirm order
     reqjson = {"id": cart_id, "key": cart_key, "address": address}
+    logger.debug(reqjson)
     res = requests.post(get_endpoint("/cart/confirmorder"), json=reqjson)
     if (res.status_code == 200):
         req_cart_items = []
@@ -292,6 +295,8 @@ def confirm_order(address_vars: dict):
         new_session()
         tab_control.select(order_frame)
         messagebox.showinfo("OK!", "Order confirmed")
+    else:
+        messagebox.showerror("Error", "Failure to order: " + res.text)
 
 def tab_changed_handler(event):
     selected_tab = event.widget.select()
@@ -389,7 +394,8 @@ confirm_label_4.grid(column=1, row=4, sticky=(W, E))
 confirm_entry_4 = ttk.Entry(confirm_frame, width=20, textvariable=confirm_postcode)
 confirm_entry_4.grid(column=2, row=4, sticky=(W, E))
 
-confirm_button_1 = ttk.Button(confirm_frame, text="Confirm", command=lambda: confirm_order([confirm_addressline1, confirm_addressline2, confirm_city, confirm_postcode]))
+confirm_button_1 = ttk.Button(confirm_frame, text="Confirm", command=lambda: confirm_order(confirm_addressline1, confirm_addressline2, confirm_city, confirm_postcode))
+confirm_button_1.grid(column=1, row=5, sticky=(W, E))
 
 # Pack
 tab_control.pack(expand=1, fill="both")
