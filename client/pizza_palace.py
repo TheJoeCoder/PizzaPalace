@@ -57,7 +57,6 @@ def create_tab(title, padding="3 3 12 12", sticky=(N, W, E, S)):
 def configure_grid(frame):
     for child in frame.winfo_children():
         child.grid_configure(padx=5, pady=5)
-    frame.pack(expand=1, fill="both") ## TEST
 
 # General connect fail function
 # Used when the server is unreachable or returns a non-200 response
