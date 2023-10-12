@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<section class="hero is-dark">
+    <div class="hero-body">
+        <p class="title">
+            Orders
+        </p>
+        <p class="subtitle">
+            Showing all orders
+        </p>
+    </div>
+</section>
+
+<div id="orders"></div>
+
+<script>
+    const socket = io();
+    socket.on("order create", function (msg) {
+        console.log(msg);
+        var card = `<div class="card" id="order-${msg.id}">`;
+        card += "<div class=\"card-content\">";
+        card += "<div class=\"content\">";
+        card += `<p class="title">${new Date().toLocaleString()}</p>`;
+        card += `<p class="subtitle">${msg.address}</p>`;
+        card += `<p class="subtitle">${msg.items}</p>`;
+        card += "</div>";
+        card += "</div>";
+        card += "</div>";
+        $("#orders").append(card);
+    });
+</script>
+
+{% endblock content %}

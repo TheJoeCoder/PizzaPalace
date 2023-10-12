@@ -1,5 +1,6 @@
 import json, uuid, logging, requests, time
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, render_template
+from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
 
 logging.basicConfig(level=logging.INFO)
@@ -8,6 +9,7 @@ logger = logging.Logger(__name__)
 logger.setLevel(logging.DEBUG)
 
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 import config
 
@@ -27,6 +29,10 @@ open_carts["test"] = {
     "key": "test",
     "items": []
 }
+
+# Generate admin token
+admin_token = str(uuid.uuid4())
+print("Admin token: " + admin_token)
 
 # Full stack trace function
 #  from https://stackoverflow.com/questions/6086976/how-to-get-a-complete-exception-stack-trace-in-python/16589622#16589622 
@@ -65,10 +71,31 @@ def get_property(request, param):
     else:
         return None
 
+def fancy_order_display(cart_items) -> str:
+    i_items = ""
+    if len(cart_items) == 0:
+        i_items = "No items\n"
+    for item in cart_items:
+        pza = None
+        for p in pizza_types:
+            if p["id"] == item["type"]:
+                pza = p
+                break
+        if pza == None:
+            i_items += "Unknown pizza type\n"
+        else:
+            i_items += pza["name"] + " (" + str(item["num_people"]) + " people) " + ("stuffed" if item["stuffed"] else "") + "\n"
+    i_items = i_items[:-1] # Remove trailing \n
+    return i_items
+
 @app.route("/")
 def hello_world():
     # Return OK message
     return "{\"status\":200, \"message\": \"ok\"}", 200
+
+@app.route("/admin")
+def admin_page_index():
+    return render_template("admin.html")
 
 @app.route("/status", methods=["GET"])
 def get_status():
@@ -228,20 +255,7 @@ def confirm_order_cart():
         "username": "PizzaBot"
     }
     if config.webhook_discord:
-        i_items = ""
-        if len(cart["items"]) == 0:
-            i_items = "No items\n"
-        for item in cart["items"]:
-            pza = None
-            for p in pizza_types:
-                if p["id"] == item["type"]:
-                    pza = p
-                    break
-            if pza == None:
-                i_items += "Unknown pizza type\n"
-            else:
-                i_items += pza["name"] + " (" + str(item["num_people"]) + " people) " + ("stuffed" if item["stuffed"] else "") + "\n"
-        i_items = i_items[:-1] # Remove trailing \n
+        i_items = fancy_order_display(cart["items"])
         # Post webhook
         embed = config.webhook_dc_embed_json.copy()
         for i in range(0, len(embed["fields"])):
@@ -265,6 +279,7 @@ def confirm_order_cart():
         except_text = full_stack()
         logger.error("Webhook failed with exception")
         logger.debug(except_text)
+    socketio.emit("order create", {"id": str(order_id), "address": address, "items": fancy_order_display(cart["items"]).replace("\n", "<br>")})
     # Remove cart from existing carts
     del open_carts[cart_id]
     # Return order ID
@@ -272,4 +287,4 @@ def confirm_order_cart():
 
 # Main program code
 if (__name__ == "__main__"):
-    app.run(debug=True, host="0.0.0.0")
+    socketio.run(app, debug=True, host="0.0.0.0")
