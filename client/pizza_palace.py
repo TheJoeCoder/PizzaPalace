@@ -290,9 +290,9 @@ def confirm_order(addressline1, addressline2, city, postcode):
     logger.debug(reqjson)
     res = requests.post(get_endpoint("/cart/confirmorder"), json=reqjson)
     if (res.status_code == 200):
+        new_session()
         req_cart_items = []
         refresh_cart_items()
-        new_session()
         tab_control.select(order_frame)
         messagebox.showinfo("OK!", "Order confirmed")
     else:
@@ -361,8 +361,8 @@ cart_label_3.grid(column=3, row=1, sticky=(W, E))
 cart_label_4 = ttk.Label(cart_frame, text="Total Cost")
 cart_label_4.grid(column=4, row=1, sticky=(W, E))
 
-cart_order_button = ttk.Button(cart_frame, text="Order", command=lambda: tab_control.select(confirm_frame))
-cart_order_button.grid(column=1, row=2, sticky=(W, E))
+#cart_order_button = ttk.Button(cart_frame, text="Order", command=lambda: tab_control.select(confirm_frame))
+#cart_order_button.grid(column=1, row=2, sticky=(W, E))
 
 configure_grid(cart_frame)
 
@@ -396,6 +396,14 @@ confirm_entry_4.grid(column=2, row=4, sticky=(W, E))
 
 confirm_button_1 = ttk.Button(confirm_frame, text="Confirm", command=lambda: confirm_order(confirm_addressline1, confirm_addressline2, confirm_city, confirm_postcode))
 confirm_button_1.grid(column=1, row=5, sticky=(W, E))
+
+toolbox_tab = create_tab("Toolbox")
+def tbox_refresh_creds():
+    new_session()
+    tab_control.select(order_frame)
+    messagebox.showinfo("OK!", "Refreshed credentials")
+tb_refresh_creds_button = ttk.Button(toolbox_tab, text="Refresh Credentials", command=tbox_refresh_creds)
+tb_refresh_creds_button.grid(column=1, row=1, sticky=(W, E))
 
 # Pack
 tab_control.pack(expand=1, fill="both")
