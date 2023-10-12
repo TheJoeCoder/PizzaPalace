@@ -228,16 +228,35 @@ def confirm_order_cart():
         "username": "PizzaBot"
     }
     if config.webhook_discord:
+        i_items = ""
+        if len(cart["items"]) == 0:
+            i_items = "No items\n"
+        for item in cart["items"]:
+            pza = None
+            for p in pizza_types:
+                if p["id"] == item["type"]:
+                    pza = p
+                    break
+            if pza == None:
+                i_items += "Unknown pizza type\n"
+            else:
+                i_items += pza["name"] + " (" + str(item["num_people"]) + " people) " + ("stuffed" if item["stuffed"] else "") + "\n"
+        i_items = i_items[:-1] # Remove trailing \n
         # Post webhook
-        embed = config.webhook_dc_embed_json
+        embed = config.webhook_dc_embed_json.copy()
         for i in range(0, len(embed["fields"])):
+            print(embed["fields"][i])
             for field_k, field_v in embed["fields"][i].items():
-                embed["fields"][i][field_k] = str(field_v).replace("%ORDER_ID%", str(order_id))
-                embed["fields"][i][field_k] = str(field_v).replace("%ADDRESS%", str(address))
-                embed["fields"][i][field_k] = str(field_v).replace("%ITEMS%", str(cart["items"]))
+                value = str(field_v)
+                value = value.replace("%ORDER_ID%", str(order_id))
+                value = value.replace("%ADDRESS%", str(address))
+                value = value.replace("%ITEMS%", i_items)
+                embed["fields"][i][field_k] = value
         webhook_data["embeds"] = [embed]
+        webhook_data["content"] = config.webhook_dc_embed_msg
     else:
         webhook_data["content"] = config.webhook_content_prepend + str(order_id)
+    print(json.dumps(webhook_data))
     try:
         webhook_response = requests.post(config.webhook_url, json=webhook_data)
         if (webhook_response.status_code != 200):
