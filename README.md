@@ -1,5 +1,5 @@
 # PizzaPalace
-GCSE Computer Science Challenge
+### Moved to https://git.rb9.xyz/TheJoeCoder/PizzaPalace
 
 ## Running the Server
 ```
